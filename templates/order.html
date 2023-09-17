@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ data.orders }}{% endblock %}
+
+{% block content %}
+    <div class="center">
+        {% for i in data.orders %}
+            <h2 style="color: white">
+                {{ i.title }}
+            </h2>
+            <img src="{% static i.img %}" alt="" width="500" height="500">
+            <h4 style="color: white">
+                Цена - {{ i.price }}р
+            </h4>
+        {% endfor %}
+    </div>
+
+
+{% endblock %}
