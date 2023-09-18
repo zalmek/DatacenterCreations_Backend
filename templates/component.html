@@ -6,13 +6,16 @@
 {% block content %}
     <div class="center">
         {% for i in data.orders %}
+            <img src="{% static i.img %}" alt="" width="500" height="500">
             <h2 style="color: white">
                 {{ i.title }}
             </h2>
-            <img src="{% static i.img %}" alt="" width="500" height="500">
             <h4 style="color: white">
                 Цена - {{ i.price }}р
             </h4>
+            <h6 style="color: white">
+                {{ i.description }}
+            </h6>
         {% endfor %}
     </div>
 
