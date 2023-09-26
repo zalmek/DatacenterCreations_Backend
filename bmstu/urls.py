@@ -21,9 +21,8 @@ from DatacenterCreator import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.GetOrders, name='orders'),
-    path('order/<int:id>/', views.GetOrder, name='order_url'),
-    path('filter', views.sendText, name='sendText'),
+    path('order/<int:id>/', views.GetComponent, name='order_url'),
+    path('', views.sendText, name='sendText'),
 ]
 
 

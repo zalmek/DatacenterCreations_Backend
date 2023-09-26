@@ -2,9 +2,9 @@
 
 {% block content %}
     <div class="input-group">
-        <form action="filter" method="post" enctype="multipart/form-data" class="form">
+        <form action="" method="get" enctype="multipart/form-data" class="form">
             {% csrf_token %}
-            <input name="text" value="{{ data.filter_text }}" type="text" class="input-group__input">
+            <input name="text" value="{{ data.filter_text }}" type="text" placeholder="Введите запрос" class="input-group__input">
             <br><br>
         </form>
     </div>
