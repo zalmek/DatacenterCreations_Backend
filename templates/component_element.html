@@ -1,16 +1,16 @@
 {% load static %}
 
 <div class="ag-courses_item">
-    {% if element.id == 9999 %}
+    {% if element.componentid == 9999 %}
     <a class="ag-courses-item_link">
         <div class="ag-courses-item_bg"></div>
 
         <div class="ag-courses-item_title">
-            {{ element.title }}
+            Ничего не найдено
         </div>
 
         <div class="ag-courses-item_date-box">
-            {% if element.price > 0 %}
+            {% if element.componentprice > 0 %}
                 Цена:
                 <span class="ag-courses-item_date">
             {{ element.price }}р
@@ -19,19 +19,23 @@
         </div>
     </a>
     {% else %}
-    <a href="{% url 'order_url' element.id %}" class="ag-courses-item_link">
+    <a href="{% url 'order_url' element.componentid %}" class="ag-courses-item_link">
         <div class="ag-courses-item_bg"></div>
 
         <div class="ag-courses-item_title">
-            {{ element.title }}
+            {{ element.componentname }}
         </div>
 
         <div class="ag-courses-item_date-box">
-            {% if element.price > 0 %}
+            {% if element.componentprice > 0 %}
                 Цена:
                 <span class="ag-courses-item_date">
-            {{ element.price }}р
+            {{ element.componentprice }}р
           </span>
+                <form action="deletion" method="post"  enctype="multipart/form-data" class="form">
+                {% csrf_token %}
+                <button type="submit" name="id" value="{{ element.componentid }}" class="glow-on-hover">Удалить</button>
+                </form>
             {% endif %}
         </div>
     </a>

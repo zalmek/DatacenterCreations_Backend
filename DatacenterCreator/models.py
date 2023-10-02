@@ -5,13 +5,12 @@ class Components(models.Model):
     componentid = models.BigAutoField(primary_key=True)
     componentname = models.CharField(max_length=100)
     componentprice = models.IntegerField()
-    componentimage = models.BinaryField()
+    componentimage = models.CharField(max_length=256)
     componentdescription = models.CharField(max_length=1000, blank=True, null=True)
     componentstatus = models.SmallIntegerField(blank=True, null=True)
 
     class Meta:
-        managed = False
-        db_table = 'components'
+         db_table = 'components'
 
 
 class Creationcomponents(models.Model):
@@ -21,7 +20,6 @@ class Creationcomponents(models.Model):
     status = models.SmallIntegerField()
 
     class Meta:
-        managed = False
         db_table = 'creationcomponents'
 
 
@@ -36,7 +34,6 @@ class Datacentercreations(models.Model):
     creationstatus = models.SmallIntegerField()
 
     class Meta:
-        managed = False
         db_table = 'datacentercreations'
 
 
@@ -46,5 +43,4 @@ class Users(models.Model):
     userrole = models.CharField(max_length=100)
 
     class Meta:
-        managed = False
         db_table = 'users'

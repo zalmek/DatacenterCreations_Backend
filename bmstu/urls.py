@@ -23,6 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('order/<int:id>/', views.GetComponent, name='order_url'),
     path('', views.sendText, name='sendText'),
+    path('deletion', views.deleteComponent, name='delete'),
+
 ]
 
 

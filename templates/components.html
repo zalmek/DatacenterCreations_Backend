@@ -4,17 +4,19 @@
     <div class="input-group">
         <form action="" method="get" enctype="multipart/form-data" class="form">
             {% csrf_token %}
-            <input name="text" value="{{ data.filter_text }}" type="text" placeholder="Введите запрос" class="input-group__input">
+            <input name="text" value="{{ input }}" type="text" placeholder="Введите запрос" class="input-group__input">
             <br><br>
         </form>
     </div>
     <div class="ag-format-container">
         <div class="ag-courses_box">
-            {% for order in data.orders %}
-                {% include 'component_element.html' with element=order %}
-            {% empty %}
-                {% include 'emptySearch.html' with elem=data.empty %}
-            {% endfor %}
+            {% if components.exists %}
+                {% for component in components %}
+                    {% include 'component_element.html' with element=component %}
+                {% endfor %}
+            {% else %}
+                {% include 'emptySearch.html'%}
+            {% endif %}
         </div>
     </div>
 {% endblock %}
