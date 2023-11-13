@@ -1,22 +1,21 @@
 from rest_framework import serializers
 
-from dcapi.models import Components, Datacentercreations
+from dcapi.models import Components, DatacenterCreations, CreationСomponents
 
 
 class ComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Components
-        fields = ["componentid", "componentname", "componentprice", "componentimage", "componentdescription",
-                  "componentstatus"]
+        fields = "__all__"
 
 
 class DatacenterCreationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Datacentercreations
-        fields = ["creationid", "creationdate", "creationapproveddate", "creationrejectiondate", "creationcompleteddate", "creationdeletiondate", "userid", "creationstatus"]
+        model = DatacenterCreations
+        fields = "__all__"
 
 
 class CreationComponentsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Datacentercreations
+        model = CreationСomponents
         fields = ["creationid", "componentid", "componentsnumber"]
