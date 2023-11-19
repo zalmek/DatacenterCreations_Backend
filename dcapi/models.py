@@ -1,6 +1,7 @@
 import datetime
 
 from django.db import models
+from django.db.models import AutoField, BigAutoField
 
 
 # Create your models here.
@@ -16,18 +17,9 @@ class Components(models.Model):
         db_table = 'components'
 
 
-class CreationСomponents(models.Model):
-    creationid = models.ForeignKey('dcapi.DatacenterCreations', models.DO_NOTHING, db_column='creationid')
-    componentid = models.ForeignKey(Components, models.DO_NOTHING, db_column='componentid')
-    componentsnumber = models.IntegerField(db_column="componentsnumber")
-
-    class Meta:
-        db_table = 'creationcomponents'
-
-
 class DatacenterCreations(models.Model):
     creationid = models.BigAutoField(primary_key=True)
-    creationdate = models.DateField(default=datetime.datetime.date(datetime.datetime.now()))
+    creationdate = models.DateField(blank=True, null=True)
     creationapproveddate = models.DateField(blank=True, null=True)
     creationrejectiondate = models.DateField(blank=True, null=True)
     creationcompleteddate = models.DateField(blank=True, null=True)
@@ -37,6 +29,17 @@ class DatacenterCreations(models.Model):
 
     class Meta:
         db_table = 'datacentercreations'
+
+
+class CreationСomponents(models.Model):
+    class Meta:
+        db_table = 'creationcomponents'
+        managed = False
+        unique_together = (("creationid", "componentid"),)
+
+    creationid = models.ForeignKey('DatacenterCreations', models.DO_NOTHING, db_column='creationid')
+    componentid = models.ForeignKey('Components', models.DO_NOTHING, db_column='componentid')
+    componentsnumber = models.IntegerField(db_column="componentsnumber", default=0)
 
 
 class Users(models.Model):

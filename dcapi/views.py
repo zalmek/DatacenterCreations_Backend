@@ -25,7 +25,7 @@ class ComponentsApiView(APIView):
             print('get')
             components = self.model.objects.all().filter(componentstatus=1).order_by("componentid")
             for component in components:
-                component.componentimage = 'http://'+minio_url+'/'+minio_bucket+'/'+component.componentimage
+                component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
             return Response(serializer.data)
         else:
@@ -67,32 +67,24 @@ class ComponentsApiView(APIView):
                                              many=True).data, status=status.HTTP_204_NO_CONTENT)
 
 
-# # Ааааааааааааааааааааааааааааааааааа
-# @api_view(['Post'])
-# def post_component_to_creation(request, pk, format=None):
-#     """
-#     Добавляет компонент в заявку
-#     """
-#     print('post')
-#     component = get_object_or_404(Components, pk=pk)
-#     creation = DatacenterCreations.objects.get_or_create(userid_id=1)
-#     creation[0].save()
-#     try:
-#         creation_components = CreationСomponents.objects.get(
-#             componentid=component.componentid, creationid=creation[0].creationid,
-#         )
-#     except:
-#         creation_components = CreationСomponents.objects.create(
-#             componentid=component.componentid,
-#             creationid=creation[0].creationid,
-#             componentsnumber=0
-#         )
-#     creation_components[0].componentsnumber += 1
-#     serializer = DatacenterCreationSerializer(creation_components)
-#     if serializer.is_valid():
-#         serializer.save()
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# Ааааааааааааааааааааааааааааааааааа
+@api_view(['Post'])
+def post_component_to_creation(request, pk, format=None):
+    """
+    Добавляет компонент в заявку
+    """
+    print('post')
+    component = get_object_or_404(Components, pk=pk)
+    creation = DatacenterCreations.objects.get_or_create(userid_id=1)
+    creation[0].save()
+    creation_components = CreationСomponents.objects.get_or_create(componentid=component,
+                                                                       creationid=creation[0])
+    creation_components[0].componentsnumber += 1
+    creation_components[0].save()
+    serializer = DatacenterCreationSerializer(creation_components)
+    components = Components.objects.all().filter(componentstatus=1).order_by("componentid")
+    serializer = ComponentSerializer(components, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CreationcomponentsApiVIew(APIView):
@@ -152,23 +144,25 @@ class DatacenterCreationsApiVIew(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['POST'])
 def publish_creation(request, pk, format=None):
     creations = get_object_or_404(DatacenterCreations, pk=pk)
     creations.creationstatus = 1
     creations.creationdate = datetime.datetime.now().date()
-    serializer = CreationComponentsSerializer(creations, data=request.data)
+    serializer = DatacenterCreationSerializer(creations, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def approve_creation(request, pk, format=None):
     creations = get_object_or_404(DatacenterCreations, pk=pk)
     creations.creationstatus = 2
     creations.creationapproveddate = datetime.datetime.now().date()
-    serializer = CreationComponentsSerializer(creations, data=request.data)
+    serializer = DatacenterCreationSerializer(creations, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
@@ -180,7 +174,7 @@ def reject_creation(request, pk, format=None):
     creations = get_object_or_404(DatacenterCreations, pk=pk)
     creations.creationstatus = 3
     creations.creationrejectiondate = datetime.datetime.now().date()
-    serializer = CreationComponentsSerializer(creations, data=request.data)
+    serializer = DatacenterCreationSerializer(creations, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
@@ -192,7 +186,7 @@ def complete_creation(request, pk, format=None):
     creations = get_object_or_404(DatacenterCreations, pk=pk)
     creations.creationstatus = 4
     creations.creationcompleteddate = datetime.datetime.now().date()
-    serializer = CreationComponentsSerializer(creations, data=request.data)
+    serializer = DatacenterCreationSerializer(creations, data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
