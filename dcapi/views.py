@@ -7,11 +7,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from minioClient import minio_bucket
 from minioClient import minio_url
-from dcapi.models import Components, CreationСomponents, DatacenterCreations
+from dcapi.models import Components, CreationСomponents, DatacenterCreations, Users
 from dcapi.serializers import ComponentSerializer, DatacenterCreationSerializer, CreationComponentsSerializer
 
+# Create your views here
 
-# Create your views here.
+user = Users.objects.get(userrole="Customer")
+
 
 class ComponentsApiView(APIView):
     model = Components
@@ -27,10 +29,18 @@ class ComponentsApiView(APIView):
             for component in components:
                 component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
-            return Response(serializer.data)
+            try:
+                creations = DatacenterCreations.objects.get(userid=user.userid)
+            except:
+                creations = None
+            return Response({
+                "components": serializer.data,
+                "creation": DatacenterCreationSerializer(creations).data
+            })
         else:
             print('get')
             component = get_object_or_404(self.model, pk=pk)
+            component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(component)
             return Response(serializer.data)
 
@@ -75,13 +85,12 @@ def post_component_to_creation(request, pk, format=None):
     """
     print('post')
     component = get_object_or_404(Components, pk=pk)
-    creation = DatacenterCreations.objects.get_or_create(userid_id=1)
+    creation = DatacenterCreations.objects.get_or_create(userid_id=user.userid)
     creation[0].save()
-    creation_components = CreationСomponents.objects.get_or_create(componentid=component,
-                                                                       creationid=creation[0])
+    creation_components = CreationСomponents.objects.get_or_create(component=component,
+                                                                   creation=creation[0])
     creation_components[0].componentsnumber += 1
     creation_components[0].save()
-    serializer = DatacenterCreationSerializer(creation_components)
     components = Components.objects.all().filter(componentstatus=1).order_by("componentid")
     serializer = ComponentSerializer(components, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -95,7 +104,8 @@ class CreationcomponentsApiVIew(APIView):
         """
         Удаляет информацию о мм
         """
-        mm = get_object_or_404(self.model, componentid=pk_component, creationid=pk_creation)
+        mm = get_object_or_404(self.model, component=Components.objects.get(pk_component),
+                               creation=CreationСomponents.objects.get(pk_creation))
         mm.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -147,62 +157,56 @@ class DatacenterCreationsApiVIew(APIView):
 
 @api_view(['POST'])
 def publish_creation(request, pk, format=None):
-    creations = get_object_or_404(DatacenterCreations, pk=pk)
-    creations.creationstatus = 1
-    creations.creationdate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creations, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    creation = get_object_or_404(DatacenterCreations, pk=pk)
+    creation.creationstatus = 1
+    creation.creationdate = datetime.datetime.now().date()
+    serializer = DatacenterCreationSerializer(creation, data=request.data)
+    serializer.save()
+    creation_components = CreationСomponents.objects.all().filter(creation=creation)
+    # return Response({
+    #     "creation":,
+    #     "components":,
+    # }, status = status.HTTP_202_ACCEPTED)
 
 
 @api_view(['POST'])
 def approve_creation(request, pk, format=None):
-    creations = get_object_or_404(DatacenterCreations, pk=pk)
-    creations.creationstatus = 2
-    creations.creationapproveddate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creations, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    creation = get_object_or_404(DatacenterCreations, pk=pk)
+    creation.creationstatus = 2
+    creation.creationapproveddate = datetime.datetime.now().date()
+    return return_creations(creation, request)
 
 
 @api_view(['POST'])
 def reject_creation(request, pk, format=None):
-    creations = get_object_or_404(DatacenterCreations, pk=pk)
-    creations.creationstatus = 3
-    creations.creationrejectiondate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creations, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    creation = get_object_or_404(DatacenterCreations, pk=pk)
+    creation.creationstatus = 3
+    creation.creationrejectiondate = datetime.datetime.now().date()
+    return return_creations(creation, request)
 
 
 @api_view(['POST'])
 def complete_creation(request, pk, format=None):
-    creations = get_object_or_404(DatacenterCreations, pk=pk)
-    creations.creationstatus = 4
-    creations.creationcompleteddate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creations, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    creation = get_object_or_404(DatacenterCreations, pk=pk)
+    creation.creationstatus = 4
+    creation.creationcompleteddate = datetime.datetime.now().date()
+    return return_creations(creation, request)
 
 
 @api_view(['POST'])
 def delete_creation(request, pk, format=None):
     """
-    Удаляет заявку (статус "удалён")
-    """
-    creations = get_object_or_404(DatacenterCreations, pk=pk)
-    creations.creationstatus = 5
-    creations.creationdeletiondate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creations, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        Удаляет заявку (статус "удалён")
+        """
+    creation = get_object_or_404(DatacenterCreations, pk=pk)
+    creation.creationstatus = 5
+    creation.creationdeletiondate = datetime.datetime.now().date()
+    return return_creations(creation, request)
+
+
+def return_creations(creation, request):
+    creation.save()
+    creations = DatacenterCreations.objects.all().exclude(
+        creationstatus=0) & DatacenterCreations.objects.all().exclude(
+        creationstatus=5)
+    return Response(DatacenterCreationSerializer(creations, many=True).data, status=status.HTTP_202_ACCEPTED)

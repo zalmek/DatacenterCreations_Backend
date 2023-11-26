@@ -35,10 +35,10 @@ class CreationСomponents(models.Model):
     class Meta:
         db_table = 'creationcomponents'
         managed = False
-        unique_together = (("creationid", "componentid"),)
+        unique_together = (("creation", "component"),)
 
-    creationid = models.ForeignKey('DatacenterCreations', models.DO_NOTHING, db_column='creationid')
-    componentid = models.ForeignKey('Components', models.DO_NOTHING, db_column='componentid')
+    creation = models.ForeignKey('DatacenterCreations', models.DO_NOTHING, db_column='creationid')
+    component = models.ForeignKey('Components', models.DO_NOTHING, db_column='componentid')
     componentsnumber = models.IntegerField(db_column="componentsnumber", default=0)
 
 
