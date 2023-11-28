@@ -1,4 +1,5 @@
 import datetime
+from itertools import chain
 
 from django.shortcuts import render, get_object_or_404
 from rest_framework import status
@@ -139,9 +140,19 @@ class DatacenterCreationsApiVIew(APIView):
             Возвращает заявку
             """
             print('get')
-            creations = self.model.objects.all()
-            serializer = self.serializer(creations, many=True)
-            return Response(serializer.data)
+            creation = self.model.objects.get(pk=pk)
+            creation_components = CreationСomponents.objects.all().filter(creation=creation)
+            list = []
+            number_of_components = []
+            for one in creation_components:
+                list.append(Components.objects.get(componentid=one.component.componentid))
+                number_of_components.append(one.componentsnumber)
+            components = chain(list)
+            return Response({
+                "creation": DatacenterCreationSerializer(creation).data,
+                "components": ComponentSerializer(components, many=True).data,
+                "number_of_components": number_of_components,
+            })
 
     def put(self, request, pk, format=None):
         """

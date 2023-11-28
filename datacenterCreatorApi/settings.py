@@ -78,9 +78,9 @@ WSGI_APPLICATION = 'datacenterCreatorApi.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'DatecenterCreator',
+        'NAME': 'datacenterCreator',
         'USER': 'postgres',
-        'PASSWORD': 'Adminpassword',
+        'PASSWORD': 'De23ni04s',
         'HOST': 'localhost',
         'PORT': 5432,  # Стандартный порт PostgreSQL
     }
