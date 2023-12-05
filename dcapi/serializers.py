@@ -18,4 +18,4 @@ class DatacenterCreationSerializer(serializers.ModelSerializer):
 class CreationComponentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreationСomponents
-        fields = ["creationid", "componentid", "componentsnumber"]
+        fields = ["creation", "component", "componentsnumber"]

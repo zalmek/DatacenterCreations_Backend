@@ -25,8 +25,11 @@ class ComponentsApiView(APIView):
         Возвращает список компонентов
         """
         if pk is None:
-            print('get')
-            components = self.model.objects.all().filter(componentstatus=1).order_by("componentid")
+            filterText = ""
+            if request.GET.get("filterText") is not None:
+                filterText = request.GET.get("filterText")
+            components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
+                componentname__contains=filterText)
             for component in components:
                 component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
@@ -39,7 +42,6 @@ class ComponentsApiView(APIView):
                 "creation": DatacenterCreationSerializer(creations).data
             })
         else:
-            print('get')
             component = get_object_or_404(self.model, pk=pk)
             component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(component)
