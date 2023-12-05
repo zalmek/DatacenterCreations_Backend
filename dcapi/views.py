@@ -2,6 +2,7 @@ import datetime
 from itertools import chain
 
 from django.shortcuts import render, get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ class ComponentsApiView(APIView):
     model = Components
     serializer = ComponentSerializer
 
+    @swagger_auto_schema()
     def get(self, request, pk=None, format=None):
         """
         Возвращает список компонентов
@@ -47,6 +49,7 @@ class ComponentsApiView(APIView):
             serializer = self.serializer(component)
             return Response(serializer.data)
 
+    @swagger_auto_schema(request_body=ComponentSerializer)
     def post(self, request, format=None):
         """
         Добавляет новый компонент
@@ -58,6 +61,7 @@ class ComponentsApiView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=ComponentSerializer)
     def put(self, request, pk, format=None):
         """
         Обновляет информацию об компоненте
@@ -69,6 +73,7 @@ class ComponentsApiView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema()
     def delete(self, request, pk, format=None):
         """
         Удаляет информацию об компоненте
@@ -80,7 +85,7 @@ class ComponentsApiView(APIView):
                                              many=True).data, status=status.HTTP_204_NO_CONTENT)
 
 
-# Ааааааааааааааааааааааааааааааааааа
+@swagger_auto_schema(request_body=ComponentSerializer, method="post")
 @api_view(['Post'])
 def post_component_to_creation(request, pk, format=None):
     """
@@ -103,6 +108,7 @@ class CreationcomponentsApiVIew(APIView):
     model = CreationСomponents
     serializer = CreationComponentsSerializer
 
+    @swagger_auto_schema(request_body=CreationComponentsSerializer)
     def delete(self, request, pk_creation=None, pk_component=None, format=None):
         """
         Удаляет информацию о мм
@@ -112,6 +118,7 @@ class CreationcomponentsApiVIew(APIView):
         mm.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @swagger_auto_schema(request_body=CreationComponentsSerializer)
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о мм
@@ -128,6 +135,7 @@ class DatacenterCreationsApiVIew(APIView):
     model = DatacenterCreations
     serializer = DatacenterCreationSerializer
 
+    @swagger_auto_schema()
     def get(self, request, pk=None, format=None):
         if pk is None:
             """
@@ -156,6 +164,7 @@ class DatacenterCreationsApiVIew(APIView):
                 "number_of_components": number_of_components,
             })
 
+    @swagger_auto_schema(request_body=DatacenterCreationSerializer)
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о заявке
@@ -168,6 +177,7 @@ class DatacenterCreationsApiVIew(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
 def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
@@ -182,6 +192,7 @@ def publish_creation(request, pk, format=None):
     # }, status = status.HTTP_202_ACCEPTED)
 
 
+@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
 def approve_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
@@ -190,6 +201,7 @@ def approve_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
+@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
 def reject_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
@@ -198,6 +210,7 @@ def reject_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
+@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
 def complete_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
@@ -206,6 +219,7 @@ def complete_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
+@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
 def delete_creation(request, pk, format=None):
     """
