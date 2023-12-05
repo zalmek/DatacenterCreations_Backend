@@ -1,15 +1,33 @@
 from django.contrib import admin
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+
 from dcapi import views
 from django.urls import include, path
-from rest_framework import routers
+from rest_framework import routers, permissions
 
 router = routers.DefaultRouter()
 
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Snippets API",
+        default_version='v1',
+        description="Test description",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@snippets.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    # permission_classes=(permissions.AllowAny,),
+)
+
 urlpatterns = [
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('', include(router.urls)),
     path(r'api/components/', views.ComponentsApiView.as_view(), name='components-list'),
     path(r'api/components/<int:pk>', views.ComponentsApiView.as_view(), name='components-list'),
-    path(r'api/components/<int:pk>/post_to_creation', views.post_component_to_creation, name="add_component_to_creation"),
+    path(r'api/components/<int:pk>/post_to_creation', views.post_component_to_creation,
+         name="add_component_to_creation"),
 
     path(r'api/creationcomponents/', views.CreationcomponentsApiVIew.as_view(), name='components-list'),
     path(r'api/creationcomponents/<int:pk>', views.CreationcomponentsApiVIew.as_view(), name='components-list'),
