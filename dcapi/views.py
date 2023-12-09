@@ -3,22 +3,42 @@ import datetime
 import uuid
 from itertools import chain
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import minioClient
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
+from rest_framework.permissions import AllowAny
+from django.views.decorators.csrf import csrf_exempt
+from dcapi.models import Components, CreationСomponents, DatacenterCreations, Users
+from dcapi.permissions import IsAdmin, IsManager, IsAuth, session_storage
+from dcapi.serializers import ComponentSerializer, DatacenterCreationSerializer, CreationComponentsSerializer, \
+    UserSerializer
 from minioClient import minio_bucket
 from minioClient import minio_url
-from dcapi.models import Components, CreationСomponents, DatacenterCreations, Users
-from dcapi.serializers import ComponentSerializer, DatacenterCreationSerializer, CreationComponentsSerializer
+from django.conf import settings
+import redis
+
 
 # Create your views here
 
-user = Users.objects.get(userrole="Customer")
+# Connect to our Redis instance
+
+def method_permission_classes(classes):
+    def decorator(func):
+        def decorated_func(self, *args, **kwargs):
+            self.permission_classes = classes
+            self.check_permissions(self.request)
+            return func(self, *args, **kwargs)
+
+        return decorated_func
+
+    return decorator
 
 
 class ComponentsApiView(APIView):
@@ -58,19 +78,19 @@ class ComponentsApiView(APIView):
             return Response(serializer.data)
 
     @swagger_auto_schema(request_body=ComponentSerializer)
+    @method_permission_classes((IsAdmin,))
     def post(self, request, format=None):
         """
         Добавляет новый компонент
         """
         print('post')
-        image = bytes(request.data['componentimage'], "utf-8")
-        print(image)
+        image = request.data['image'].decode("utf-8")
         filename = uuid.uuid4()
-        file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+        file = open(filename.__str__()+".png", "wb")
         file.write(base64.b64decode(image))
         file.close()
-        minioClient.load_file(filename.__str__() + ".png")
-        request.data["componentimage"] = filename.__str__()
+        minioClient.load_file(filename.__str__())
+        request.data["componentimage"] = filename.__str__()+".png"
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -78,6 +98,7 @@ class ComponentsApiView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(request_body=ComponentSerializer)
+    @method_permission_classes((IsAdmin,))
     def put(self, request, pk, format=None):
         """
         Обновляет информацию об компоненте
@@ -97,6 +118,7 @@ class ComponentsApiView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema()
+    @method_permission_classes((IsAdmin,))
     def delete(self, request, pk, format=None):
         """
         Удаляет информацию об компоненте
@@ -110,11 +132,14 @@ class ComponentsApiView(APIView):
 
 @swagger_auto_schema(request_body=ComponentSerializer, method="post")
 @api_view(['Post'])
+@permission_classes([IsAuth])
 def post_component_to_creation(request, pk, format=None):
     """
     Добавляет компонент в заявку
     """
     print('post')
+    user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
+    user = Users.objects.get(email__iexact=user_email)
     component = get_object_or_404(Components, pk=pk)
     creation = DatacenterCreations.objects.get_or_create(user=user.email)
     creation[0].save()
@@ -132,6 +157,7 @@ class CreationcomponentsApiVIew(APIView):
     serializer = CreationComponentsSerializer
 
     @swagger_auto_schema(request_body=CreationComponentsSerializer)
+    @method_permission_classes((IsManager,))
     def delete(self, request, pk_creation=None, pk_component=None, format=None):
         """
         Удаляет информацию о мм
@@ -142,6 +168,7 @@ class CreationcomponentsApiVIew(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(request_body=CreationComponentsSerializer)
+    @method_permission_classes((IsManager,))
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о мм
@@ -159,6 +186,7 @@ class DatacenterCreationsApiVIew(APIView):
     serializer = DatacenterCreationSerializer
 
     @swagger_auto_schema()
+    @method_permission_classes([IsAdmin, IsAuth])
     def get(self, request, pk=None, format=None):
         status_filter = request.GET.get("status")
         start_date_filter = request.GET.get("start_date")
@@ -197,6 +225,7 @@ class DatacenterCreationsApiVIew(APIView):
             })
 
     @swagger_auto_schema(request_body=DatacenterCreationSerializer)
+    @method_permission_classes((IsAdmin,))
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о заявке
@@ -219,6 +248,7 @@ class DatacenterCreationsApiVIew(APIView):
 
 @swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
+@method_permission_classes((IsAuth,))
 def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 0:
@@ -241,6 +271,7 @@ def publish_creation(request, pk, format=None):
 
 @swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
+@method_permission_classes((IsManager,))
 def approve_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
@@ -252,6 +283,7 @@ def approve_creation(request, pk, format=None):
 
 @swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
+@method_permission_classes((IsManager,))
 def reject_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
@@ -263,6 +295,7 @@ def reject_creation(request, pk, format=None):
 
 @swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
+@method_permission_classes((IsManager,))
 def complete_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 2:
@@ -275,6 +308,7 @@ def complete_creation(request, pk, format=None):
 
 @swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
+@method_permission_classes((IsManager,))
 def delete_creation(request, pk, format=None):
     """
         Удаляет заявку (статус "удалён")
@@ -293,3 +327,62 @@ def return_creations(creation, request):
         creationstatus=0) & DatacenterCreations.objects.all().exclude(
         creationstatus=5)
     return Response(DatacenterCreationSerializer(creations, many=True).data, status=status.HTTP_202_ACCEPTED)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """Класс, описывающий методы работы с пользователями
+    Осуществляет связь с таблицей пользователей в базе данных
+    """
+    queryset = Users.objects.all()
+    serializer_class = UserSerializer
+    model_class = Users
+
+    def get_permissions(self):
+        if self.action in ['create']:
+            permission_classes = [AllowAny]
+        elif self.action in ['list']:
+            permission_classes = [IsAdmin | IsManager]
+        else:
+            permission_classes = [IsAdmin]
+        return [permission() for permission in permission_classes]
+
+    def create(self, request, **kwargs):
+        """
+        Функция регистрации новых пользователей
+        Если пользователя c указанным в request email ещё нет, в БД будет добавлен новый пользователь.
+        """
+        if self.model_class.objects.filter(email=request.data['email']).exists():
+            return Response({'status': 'Exist'}, status=400)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            print(serializer.data)
+            self.model_class.objects.create_user(email=serializer.data['email'],
+                                                 password=serializer.data['password'],
+                                                 is_superuser=serializer.data['is_superuser'],
+                                                 is_staff=serializer.data['is_staff'])
+            return Response({'status': 'Success'}, status=200)
+        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['Post'])
+def login_view(request):
+    serializer = UserSerializer(data=request.data)
+    if not serializer.is_valid():
+        user = authenticate(**serializer.data)
+        if user is not None:
+            random_key = uuid.uuid4()
+            session_storage.set(random_key.__str__(), user.email)
+            response = HttpResponse("{'status': 'ok'}")
+            response.set_cookie("session_id", random_key)
+            return response
+        else:
+            return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+    else:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['Post'])
+def logout_view(request):
+    sessionid = request.COOKIES["session_id"]
+    response = HttpResponse("{'status': 'ok'}")
+    session_storage.set(sessionid, "expired")
+    return response
