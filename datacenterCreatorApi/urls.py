@@ -18,11 +18,17 @@ schema_view = get_schema_view(
         license=openapi.License(name="BSD License"),
     ),
     public=True,
-    # permission_classes=(permissions.AllowAny,),
+    permission_classes=(permissions.AllowAny,),
 )
+router.register(r'user', views.UserViewSet, basename='user')
 
 urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('login', views.login_view, name='login'),
+    path('logout', views.logout_view, name='logout'),
+
     path('', include(router.urls)),
     path(r'api/components/', views.ComponentsApiView.as_view(), name='components-list'),
     path(r'api/components/<int:pk>', views.ComponentsApiView.as_view(), name='components-list'),

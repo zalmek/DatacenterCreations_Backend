@@ -40,6 +40,19 @@ INSTALLED_APPS = [
     'dcapi'
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}
+
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -77,7 +90,7 @@ WSGI_APPLICATION = 'datacenterCreatorApi.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'datacenterCreator',
+        'NAME': 'dccreator',
         'USER': 'postgres',
         'PASSWORD': 'De23ni04s',
         'HOST': 'localhost',
@@ -102,6 +115,8 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+AUTH_USER_MODEL = "dcapi.Users"
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
