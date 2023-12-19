@@ -167,6 +167,14 @@ class DatacenterCreationsApiVIew(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, pk, format=None):
+        creation = get_object_or_404(self.model, pk=pk)
+        creation_components = CreationСomponents.objects.all().filter(creation=creation)
+        for one in creation_components:
+            one.delete()
+        creation.delete()
+        return Response(status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def publish_creation(request, pk, format=None):
