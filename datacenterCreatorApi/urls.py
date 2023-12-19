@@ -20,14 +20,14 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
-router.register(r'user', views.UserViewSet, basename='user')
+router.register(r'api/user', views.UserViewSet, basename='user')
 
 urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('login', views.login_view, name='login'),
-    path('logout', views.logout_view, name='logout'),
+    path('api/login', views.login_view, name='login'),
+    path('api/logout', views.logout_view, name='logout'),
 
     path('', include(router.urls)),
     path(r'api/components/', views.ComponentsApiView.as_view(), name='components-list'),
@@ -45,7 +45,6 @@ urlpatterns = [
     path(r'api/datacentercreations/<int:pk>/moderator_rejection', views.reject_creation, name=''),
     path(r'api/datacentercreations/<int:pk>/moderator_completion', views.complete_creation, name=''),
     path(r'api/datacentercreations/<int:pk>/moderator_deletion', views.delete_creation, name=''),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 
     path('admin/', admin.site.urls),
 ]
