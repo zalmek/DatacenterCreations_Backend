@@ -239,7 +239,7 @@ class DatacenterCreationsApiVIew(APIView):
                 })
 
     @swagger_auto_schema(request_body=DatacenterCreationSerializer)
-    @method_permission_classes((IsAdmin,))
+    @method_permission_classes([IsAdmin])
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о заявке
@@ -251,6 +251,7 @@ class DatacenterCreationsApiVIew(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @method_permission_classes([IsAdmin])
     def delete(self, request, pk, format=None):
         creation = get_object_or_404(self.model, pk=pk)
         creation_components = CreationСomponents.objects.all().filter(creation=creation)
