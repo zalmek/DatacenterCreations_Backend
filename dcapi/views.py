@@ -179,9 +179,10 @@ class DatacenterCreationsApiVIew(APIView):
 @api_view(['POST'])
 def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    creation.creationstatus = 1
-    creation.creationdate = datetime.datetime.now().date()
-    creation.save()
+    if creation.creationstatus == 0:
+        creation.creationstatus = 1
+        creation.creationdate = datetime.datetime.now().date()
+        creation.save()
     creation_components = CreationСomponents.objects.all().filter(creation=creation)
     list = []
     number_of_components = []
@@ -210,16 +211,22 @@ def approve_creation(request, pk, format=None):
 @api_view(['POST'])
 def reject_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    creation.creationstatus = 3
-    creation.creationrejectiondate = datetime.datetime.now().date()
+    if creation.creationstatus == 1:
+        creation.creationstatus = 3
+        creation.creationrejectiondate = datetime.datetime.now().date()
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
 
 
 @api_view(['POST'])
 def complete_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    creation.creationstatus = 4
-    creation.creationcompleteddate = datetime.datetime.now().date()
+    if creation.creationstatus == 2:
+        creation.creationstatus = 4
+        creation.creationcompleteddate = datetime.datetime.now().date()
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
 
 
@@ -229,8 +236,9 @@ def delete_creation(request, pk, format=None):
         Удаляет заявку (статус "удалён")
         """
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    creation.creationstatus = 5
-    creation.creationdeletiondate = datetime.datetime.now().date()
+    if creation.creationstatus == 0:
+        creation.creationstatus = 5
+        creation.creationdeletiondate = datetime.datetime.now().date()
     return return_creations(creation, request)
 
 
