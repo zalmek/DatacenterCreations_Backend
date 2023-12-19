@@ -19,11 +19,9 @@ class Components(models.Model):
 
 class DatacenterCreations(models.Model):
     creationid = models.BigAutoField(primary_key=True)
-    creationdate = models.DateField(blank=True, null=True)
-    creationapproveddate = models.DateField(blank=True, null=True)
-    creationrejectiondate = models.DateField(blank=True, null=True)
-    creationcompleteddate = models.DateField(blank=True, null=True)
-    creationdeletiondate = models.DateField(blank=True, null=True)
+    creationdate = models.DateTimeField(auto_now_add=True)
+    creationformdate = models.DateTimeField(blank=True, null=True)
+    creationcompleteddate = models.DateTimeField(blank=True, null=True)
     userid = models.ForeignKey('Users', models.DO_NOTHING, db_column='userid', default=2)
     creationstatus = models.SmallIntegerField(default=0)
 
