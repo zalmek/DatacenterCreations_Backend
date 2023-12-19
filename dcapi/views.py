@@ -45,7 +45,6 @@ class ComponentsApiView(APIView):
     model = Components
     serializer = ComponentSerializer
 
-    @swagger_auto_schema()
     def get(self, request, pk=None, format=None):
         """
         Возвращает список компонентов
@@ -60,7 +59,9 @@ class ComponentsApiView(APIView):
                 component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
             try:
-                creation = DatacenterCreations.objects.get(user=Users.objects.get(email=user.email))
+                ssid = request.COOKIES["session_id"]
+                value = session_storage.get(ssid)
+                creation = DatacenterCreations.objects.get(user=Users.objects.get(email=value.decode("utf-8")))
                 return Response({
                     "components": serializer.data,
                     "creation": creation.creationid
@@ -117,7 +118,6 @@ class ComponentsApiView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @swagger_auto_schema()
     @method_permission_classes((IsAdmin,))
     def delete(self, request, pk, format=None):
         """
@@ -156,7 +156,6 @@ class CreationcomponentsApiVIew(APIView):
     model = CreationСomponents
     serializer = CreationComponentsSerializer
 
-    @swagger_auto_schema(request_body=CreationComponentsSerializer)
     @method_permission_classes((IsManager,))
     def delete(self, request, pk_creation=None, pk_component=None, format=None):
         """
@@ -185,13 +184,13 @@ class DatacenterCreationsApiVIew(APIView):
     model = DatacenterCreations
     serializer = DatacenterCreationSerializer
 
-    @swagger_auto_schema()
-    @method_permission_classes([IsAdmin, IsAuth])
+    @method_permission_classes([IsAuth])
     def get(self, request, pk=None, format=None):
         status_filter = request.GET.get("status")
         start_date_filter = request.GET.get("start_date")
         end_date_filter = request.GET.get("end_date")
-        if pk is None:
+        user = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
+        if pk is None and user.is_superuser:
             """
             Возвращает список заявок
             """
@@ -210,19 +209,34 @@ class DatacenterCreationsApiVIew(APIView):
             Возвращает заявку
             """
             print('get')
-            creation = self.model.objects.get(pk=pk)
-            creation_components = CreationСomponents.objects.all().filter(creation=creation)
-            list = []
-            number_of_components = []
-            for one in creation_components:
-                list.append(Components.objects.get(componentid=one.component.componentid))
-                number_of_components.append(one.componentsnumber)
-            components = chain(list)
-            return Response({
-                "creation": DatacenterCreationSerializer(creation).data,
-                "components": ComponentSerializer(components, many=True).data,
-                "number_of_components": number_of_components,
-            })
+            if pk is not None:
+                creation = self.model.objects.get(pk=pk)
+                creation_components = CreationСomponents.objects.all().filter(creation=creation)
+                list = []
+                number_of_components = []
+                for one in creation_components:
+                    list.append(Components.objects.get(componentid=one.component.componentid))
+                    number_of_components.append(one.componentsnumber)
+                components = chain(list)
+                return Response({
+                    "creation": DatacenterCreationSerializer(creation).data,
+                    "components": ComponentSerializer(components, many=True).data,
+                    "number_of_components": number_of_components,
+                })
+            else:
+                creation = self.model.objects.get(user=user)
+                creation_components = CreationСomponents.objects.all().filter(creation=creation)
+                list = []
+                number_of_components = []
+                for one in creation_components:
+                    list.append(Components.objects.get(componentid=one.component.componentid))
+                    number_of_components.append(one.componentsnumber)
+                components = chain(list)
+                return Response({
+                    "creation": DatacenterCreationSerializer(creation).data,
+                    "components": ComponentSerializer(components, many=True).data,
+                    "number_of_components": number_of_components,
+                })
 
     @swagger_auto_schema(request_body=DatacenterCreationSerializer)
     @method_permission_classes((IsAdmin,))
@@ -246,9 +260,8 @@ class DatacenterCreationsApiVIew(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
-@method_permission_classes((IsAuth,))
+@permission_classes([IsAuth])
 def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 0:
@@ -269,9 +282,8 @@ def publish_creation(request, pk, format=None):
     })
 
 
-@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
-@method_permission_classes((IsManager,))
+@permission_classes([IsManager])
 def approve_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
@@ -281,9 +293,8 @@ def approve_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
-@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
-@method_permission_classes((IsManager,))
+@permission_classes([IsManager])
 def reject_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
@@ -293,9 +304,8 @@ def reject_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
-@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
-@method_permission_classes((IsManager,))
+@permission_classes([IsManager])
 def complete_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 2:
@@ -306,9 +316,8 @@ def complete_creation(request, pk, format=None):
     return return_creations(creation, request)
 
 
-@swagger_auto_schema(request_body=DatacenterCreationSerializer, method="post")
 @api_view(['POST'])
-@method_permission_classes((IsManager,))
+@permission_classes([IsManager])
 def delete_creation(request, pk, format=None):
     """
         Удаляет заявку (статус "удалён")
