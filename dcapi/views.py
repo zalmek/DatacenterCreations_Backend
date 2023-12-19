@@ -34,7 +34,7 @@ class ComponentsApiView(APIView):
                 component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
             try:
-                creations = DatacenterCreations.objects.get(userid=user.userid)
+                creations = DatacenterCreations.objects.get(user=Users.objects.get(email=user.email))
             except:
                 creations = None
             return Response({
@@ -88,7 +88,7 @@ def post_component_to_creation(request, pk, format=None):
     """
     print('post')
     component = get_object_or_404(Components, pk=pk)
-    creation = DatacenterCreations.objects.get_or_create(userid_id=user.userid)
+    creation = DatacenterCreations.objects.get_or_create(user=user.email)
     creation[0].save()
     creation_components = CreationСomponents.objects.get_or_create(component=component,
                                                                    creation=creation[0])
@@ -129,12 +129,21 @@ class DatacenterCreationsApiVIew(APIView):
     serializer = DatacenterCreationSerializer
 
     def get(self, request, pk=None, format=None):
+        status_filter = request.GET.get("status")
+        start_date_filter = request.GET.get("start_date")
+        end_date_filter = request.GET.get("end_date")
         if pk is None:
             """
             Возвращает список заявок
             """
             print('get')
             creations = self.model.objects.all()
+            if status_filter is not None:
+                creations = creations.filter(creationstatus=status_filter)
+            if start_date_filter is not None and end_date_filter is not None:
+                start_date = datetime.datetime.strptime(start_date_filter, "%Y-%m-%d")
+                end_date = datetime.datetime.strptime(end_date_filter, "%Y-%m-%d")
+                creations = creations.filter(creationdate__range=(start_date, end_date))
             serializer = self.serializer(creations, many=True)
             return Response(serializer.data)
         else:

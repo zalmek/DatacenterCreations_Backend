@@ -22,7 +22,7 @@ class DatacenterCreations(models.Model):
     creationdate = models.DateTimeField(auto_now_add=True)
     creationformdate = models.DateTimeField(blank=True, null=True)
     creationcompleteddate = models.DateTimeField(blank=True, null=True)
-    userid = models.ForeignKey('Users', models.DO_NOTHING, db_column='userid', default=2)
+    user = models.ForeignKey('Users', models.DO_NOTHING, db_column='useremail', default="null")
     creationstatus = models.SmallIntegerField(default=0)
 
     class Meta:
@@ -41,6 +41,7 @@ class CreationСomponents(models.Model):
 
 
 class Users(models.Model):
+    email = models.CharField(db_column="email")
     userid = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=100)
     userrole = models.CharField(max_length=100)
