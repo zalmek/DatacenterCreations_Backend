@@ -181,20 +181,17 @@ def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     creation.creationstatus = 1
     creation.creationdate = datetime.datetime.now().date()
-    serializer = DatacenterCreationSerializer(creation, data=request.data)
-    serializer.save()
-    creation_components = CreationСomponents.objects.all().filter(creation=creation)
-    # return Response({
-    #     "creation":,
-    #     "components":,
-    # }, status = status.HTTP_202_ACCEPTED)
+    return return_creations(creation, request)
 
 
 @api_view(['POST'])
 def approve_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    creation.creationstatus = 2
-    creation.creationapproveddate = datetime.datetime.now().date()
+    if creation.creationstatus == 1:
+        creation.creationstatus = 2
+        creation.creationapproveddate = datetime.datetime.now().date()
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
 
 
