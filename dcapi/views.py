@@ -239,6 +239,8 @@ def delete_creation(request, pk, format=None):
     if creation.creationstatus == 0:
         creation.creationstatus = 5
         creation.creationdeletiondate = datetime.datetime.now().date()
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
 
 
