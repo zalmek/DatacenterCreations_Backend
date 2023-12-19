@@ -279,7 +279,7 @@ def complete_creation(request, pk, format=None):
 
 
 @api_view(['POST'])
-@permission_classes([IsManager])
+@permission_classes([IsAuth])
 def delete_creation(request, pk, format=None):
     """
         Удаляет заявку (статус "удалён")
