@@ -181,7 +181,19 @@ def publish_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     creation.creationstatus = 1
     creation.creationdate = datetime.datetime.now().date()
-    return return_creations(creation, request)
+    creation.save()
+    creation_components = CreationСomponents.objects.all().filter(creation=creation)
+    list = []
+    number_of_components = []
+    for one in creation_components:
+        list.append(Components.objects.get(componentid=one.component.componentid))
+        number_of_components.append(one.componentsnumber)
+    components = chain(list)
+    return Response({
+        "creation": DatacenterCreationSerializer(creation).data,
+        "components": ComponentSerializer(components, many=True).data,
+        "number_of_components": number_of_components,
+    })
 
 
 @api_view(['POST'])
