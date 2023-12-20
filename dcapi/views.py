@@ -67,7 +67,7 @@ class ComponentsApiView(APIView):
         file.write(base64.b64decode(image))
         file.close()
         minioClient.load_file(filename.__str__() + ".png")
-        request.data["componentimage"] = filename.__str__()
+        request.data["componentimage"] = filename.__str__()+".png"
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -84,7 +84,7 @@ class ComponentsApiView(APIView):
         file = open(filename.__str__()+".png", "wb")
         file.write(base64.b64decode(image))
         file.close()
-        minioClient.load_file(filename.__str__())
+        minioClient.load_file(filename.__str__()+".png")
         component.componentimage = filename.__str__()+".png"
         serializer = self.serializer(component, data=request.data)
         if serializer.is_valid():
@@ -111,7 +111,7 @@ def post_component_to_creation(request, pk, format=None):
     """
     print('post')
     component = get_object_or_404(Components, pk=pk)
-    creation = DatacenterCreations.objects.get_or_create(user=user.email)
+    creation = DatacenterCreations.objects.get_or_create(user=user)
     creation[0].save()
     creation_components = CreationСomponents.objects.get_or_create(component=component,
                                                                    creation=creation[0])
