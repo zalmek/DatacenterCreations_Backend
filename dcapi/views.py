@@ -1,4 +1,6 @@
+import base64
 import datetime
+import uuid
 from itertools import chain
 
 from django.shortcuts import render, get_object_or_404
@@ -6,6 +8,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+import minioClient
 from minioClient import minio_bucket
 from minioClient import minio_url
 from dcapi.models import Components, CreationСomponents, DatacenterCreations, Users
@@ -34,13 +38,17 @@ class ComponentsApiView(APIView):
                 component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
             try:
-                creations = DatacenterCreations.objects.get(user=Users.objects.get(email=user.email))
+                creation = DatacenterCreations.objects.get(user=Users.objects.get(email=user.email))
+                return Response({
+                    "components": serializer.data,
+                    "creation": creation.creationid
+                })
             except:
-                creations = None
-            return Response({
-                "components": serializer.data,
-                "creation": DatacenterCreationSerializer(creations).data
-            })
+                creation = None
+                return Response({
+                    "components": serializer.data,
+                    "creation": None
+                })
         else:
             component = get_object_or_404(self.model, pk=pk)
             component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
@@ -52,6 +60,14 @@ class ComponentsApiView(APIView):
         Добавляет новый компонент
         """
         print('post')
+        image = bytes(request.data['componentimage'], "utf-8")
+        print(image)
+        filename = uuid.uuid4()
+        file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+        file.write(base64.b64decode(image))
+        file.close()
+        minioClient.load_file(filename.__str__() + ".png")
+        request.data["componentimage"] = filename.__str__()
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -63,6 +79,13 @@ class ComponentsApiView(APIView):
         Обновляет информацию об компоненте
         """
         component = get_object_or_404(self.model, pk=pk)
+        image = request.data['image'].decode("utf-8")
+        filename = uuid.uuid4()
+        file = open(filename.__str__()+".png", "wb")
+        file.write(base64.b64decode(image))
+        file.close()
+        minioClient.load_file(filename.__str__())
+        component.componentimage = filename.__str__()+".png"
         serializer = self.serializer(component, data=request.data)
         if serializer.is_valid():
             serializer.save()

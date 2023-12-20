@@ -9,7 +9,7 @@ class Components(models.Model):
     componentid = models.BigAutoField(primary_key=True)
     componentname = models.CharField(max_length=100)
     componentprice = models.IntegerField()
-    componentimage = models.CharField(max_length=256)
+    componentimage = models.CharField(max_length=100000)
     componentdescription = models.CharField(max_length=10000, blank=True, null=True)
     componentstatus = models.SmallIntegerField(blank=True, null=True)
 
