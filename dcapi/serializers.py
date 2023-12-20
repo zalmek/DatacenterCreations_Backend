@@ -23,8 +23,7 @@ class CreationComponentsSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     is_staff = serializers.BooleanField(default=False, required=False)
-    is_superuser = serializers.BooleanField(default=False, required=False)
 
     class Meta:
         model = Users
-        fields = ['email', 'password', 'is_staff', 'is_superuser']
+        fields = ['email', 'password', 'is_staff']

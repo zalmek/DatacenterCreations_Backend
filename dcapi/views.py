@@ -3,26 +3,23 @@ import datetime
 import uuid
 from itertools import chain
 
+from django.contrib.auth import authenticate
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import minioClient
-from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponse
-from rest_framework.permissions import AllowAny
-from django.views.decorators.csrf import csrf_exempt
 from dcapi.models import Components, CreationСomponents, DatacenterCreations, Users
-from dcapi.permissions import IsAdmin, IsManager, IsAuth, session_storage
+from dcapi.permissions import IsManager, IsAuth, session_storage
 from dcapi.serializers import ComponentSerializer, DatacenterCreationSerializer, CreationComponentsSerializer, \
     UserSerializer
 from minioClient import minio_bucket
 from minioClient import minio_url
-from django.conf import settings
-import redis
 
 
 # Create your views here
@@ -79,7 +76,7 @@ class ComponentsApiView(APIView):
             return Response(serializer.data)
 
     @swagger_auto_schema(request_body=ComponentSerializer)
-    @method_permission_classes((IsAdmin,))
+    @method_permission_classes([IsManager])
     def post(self, request, format=None):
         """
         Добавляет новый компонент
@@ -99,7 +96,7 @@ class ComponentsApiView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(request_body=ComponentSerializer)
-    @method_permission_classes((IsAdmin,))
+    @method_permission_classes([IsManager])
     def put(self, request, pk, format=None):
         """
         Обновляет информацию об компоненте
@@ -118,7 +115,7 @@ class ComponentsApiView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @method_permission_classes((IsAdmin,))
+    @method_permission_classes([IsManager])
     def delete(self, request, pk, format=None):
         """
         Удаляет информацию об компоненте
@@ -139,9 +136,9 @@ def post_component_to_creation(request, pk, format=None):
     """
     print('post')
     user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
-    user = Users.objects.get(email__iexact=user_email)
+    user = Users.objects.get(email=user_email)
     component = get_object_or_404(Components, pk=pk)
-    creation = DatacenterCreations.objects.get_or_create(user=user.email)
+    creation = DatacenterCreations.objects.get_or_create(user=user)
     creation[0].save()
     creation_components = CreationСomponents.objects.get_or_create(component=component,
                                                                    creation=creation[0])
@@ -190,7 +187,7 @@ class DatacenterCreationsApiVIew(APIView):
         start_date_filter = request.GET.get("start_date")
         end_date_filter = request.GET.get("end_date")
         user = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
-        if pk is None and user.is_superuser:
+        if pk is None and user.is_staff:
             """
             Возвращает список заявок
             """
@@ -239,7 +236,7 @@ class DatacenterCreationsApiVIew(APIView):
                 })
 
     @swagger_auto_schema(request_body=DatacenterCreationSerializer)
-    @method_permission_classes([IsAdmin])
+    @method_permission_classes([IsManager])
     def put(self, request, pk, format=None):
         """
         Обновляет информацию о заявке
@@ -251,7 +248,7 @@ class DatacenterCreationsApiVIew(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @method_permission_classes([IsAdmin])
+    @method_permission_classes([IsManager])
     def delete(self, request, pk, format=None):
         creation = get_object_or_404(self.model, pk=pk)
         creation_components = CreationСomponents.objects.all().filter(creation=creation)
@@ -351,9 +348,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['create']:
             permission_classes = [AllowAny]
         elif self.action in ['list']:
-            permission_classes = [IsAdmin | IsManager]
+            permission_classes = [IsManager]
         else:
-            permission_classes = [IsAdmin]
+            permission_classes = [IsManager]
         return [permission() for permission in permission_classes]
 
     def create(self, request, **kwargs):
@@ -368,7 +365,6 @@ class UserViewSet(viewsets.ModelViewSet):
             print(serializer.data)
             self.model_class.objects.create_user(email=serializer.data['email'],
                                                  password=serializer.data['password'],
-                                                 is_superuser=serializer.data['is_superuser'],
                                                  is_staff=serializer.data['is_staff'])
             return Response({'status': 'Success'}, status=200)
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

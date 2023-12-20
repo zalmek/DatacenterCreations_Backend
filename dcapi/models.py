@@ -44,11 +44,10 @@ class NewUserManager(UserManager):
 class Users(AbstractBaseUser, PermissionsMixin):
     objects = NewUserManager()
 
-    id = models.AutoField(primary_key=True)
     email = models.EmailField(("email адрес"), unique=True)
+    id = models.AutoField(primary_key=True)
     password = models.CharField(max_length=255, verbose_name="Пароль")
     is_staff = models.BooleanField(default=False, verbose_name="Является ли пользователь менеджером?")
-    is_superuser = models.BooleanField(default=False, verbose_name="Является ли пользователь админом?")
 
     USERNAME_FIELD = 'email'
 
@@ -58,11 +57,12 @@ class DatacenterCreations(models.Model):
     creationdate = models.DateTimeField(auto_now_add=True)
     creationformdate = models.DateTimeField(blank=True, null=True)
     creationcompleteddate = models.DateTimeField(blank=True, null=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING, db_column='useremail', default="null")
+    user = models.ForeignKey('Users', models.DO_NOTHING, db_column='useremail', default="null", to_field='email')
     creationstatus = models.SmallIntegerField(default=0)
 
     class Meta:
         db_table = 'datacentercreations'
+        managed = False
 
 
 class CreationСomponents(models.Model):

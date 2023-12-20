@@ -19,15 +19,6 @@ class IsManager(permissions.BasePermission):
         return bool(False)
 
 
-class IsAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        ssid = request.COOKIES["session_id"]
-        value = session_storage.get(ssid)
-        if value is not None and Users.objects.get(email__iexact=value.decode("utf-8")).is_superuser:
-            return bool(True)
-        return bool(False)
-
-
 class IsAuth(permissions.BasePermission):
     def has_permission(self, request, view):
         ssid = request.COOKIES["session_id"]
