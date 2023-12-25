@@ -60,37 +60,41 @@ class ComponentsApiView(APIView):
         Добавляет новый компонент
         """
         print('post')
-        image = bytes(request.data['componentimage'], "utf-8")
-        print(image)
-        filename = uuid.uuid4()
-        file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
-        file.write(base64.b64decode(image))
-        file.close()
-        minioClient.load_file(filename.__str__() + ".png")
-        request.data["componentimage"] = filename.__str__()+".png"
-        serializer = self.serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            image = bytes(request.data['componentimage'], "utf-8")
+            print(image)
+            filename = uuid.uuid4()
+            file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+            file.write(base64.b64decode(image))
+            file.close()
+            minioClient.load_file(filename.__str__() + ".png")
+            request.data["componentimage"] = filename.__str__()+".png"
+        finally:
+            serializer = self.serializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk, format=None):
         """
         Обновляет информацию об компоненте
         """
         component = get_object_or_404(self.model, pk=pk)
-        image = request.data['image'].decode("utf-8")
-        filename = uuid.uuid4()
-        file = open(filename.__str__()+".png", "wb")
-        file.write(base64.b64decode(image))
-        file.close()
-        minioClient.load_file(filename.__str__()+".png")
-        component.componentimage = filename.__str__()+".png"
-        serializer = self.serializer(component, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            image = request.data['image'].decode("utf-8")
+            filename = uuid.uuid4()
+            file = open(filename.__str__()+".png", "wb")
+            file.write(base64.b64decode(image))
+            file.close()
+            minioClient.load_file(filename.__str__()+".png")
+            component.componentimage = filename.__str__()+".png"
+        finally:
+            serializer = self.serializer(component, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
         """
