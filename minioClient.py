@@ -2,6 +2,8 @@ import os
 
 from minio import Minio
 
+from dcapi.models import Components
+
 minio_url = "127.0.0.1:9000"
 minio_bucket = "images"
 client = Minio(endpoint=minio_url,  # адрес сервера
@@ -22,3 +24,4 @@ def load_file(filename):
 
 # for filename in os.listdir("dcapi/static"):
 #     load_file(filename)
+

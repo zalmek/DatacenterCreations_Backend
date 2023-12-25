@@ -11,9 +11,9 @@ class Components(models.Model):
     componentid = models.BigAutoField(primary_key=True)
     componentname = models.CharField(max_length=100)
     componentprice = models.IntegerField()
-    componentimage = models.CharField(max_length=100000)
+    componentimage = models.CharField(max_length=100000, null=True, blank=True)
     componentdescription = models.CharField(max_length=10000, blank=True, null=True)
-    componentstatus = models.SmallIntegerField(blank=True, null=True)
+    componentstatus = models.SmallIntegerField(blank=True, null=True, default=1)
 
     class Meta:
         db_table = 'components'

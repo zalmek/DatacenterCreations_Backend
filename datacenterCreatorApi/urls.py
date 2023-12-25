@@ -36,8 +36,8 @@ urlpatterns = [
          name="add_component_to_creation"),
 
     path(r'api/creationcomponents/', views.CreationcomponentsApiVIew.as_view(), name='components-list'),
-    path(r'api/creationcomponents/<int:pk>', views.CreationcomponentsApiVIew.as_view(), name='components-list'),
 
+    path(r'api/datacentercreations/latest', views.get_last_creation, name="get_last_creation"),
     path(r'api/datacentercreations/', views.DatacenterCreationsApiVIew.as_view(), name='components-list'),
     path(r'api/datacentercreations/<int:pk>', views.DatacenterCreationsApiVIew.as_view(), name='components-list'),
     path(r'api/datacentercreations/<int:pk>/user_publish', views.publish_creation, name=''),

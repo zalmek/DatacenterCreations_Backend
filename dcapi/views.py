@@ -52,13 +52,12 @@ class ComponentsApiView(APIView):
                 filterText = request.GET.get("filterText")
             components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
                 componentname__contains=filterText)
-            for component in components:
-                component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(components, many=True)
             try:
                 ssid = request.COOKIES["session_id"]
                 value = session_storage.get(ssid)
                 creation = DatacenterCreations.objects.get(user=Users.objects.get(email=value.decode("utf-8")))
+                CreationСomponents.objects.get(creation=creation).component
                 return Response({
                     "components": serializer.data,
                     "creation": creation.creationid
@@ -71,7 +70,6 @@ class ComponentsApiView(APIView):
                 })
         else:
             component = get_object_or_404(self.model, pk=pk)
-            component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + component.componentimage
             serializer = self.serializer(component)
             return Response(serializer.data)
 
@@ -82,18 +80,21 @@ class ComponentsApiView(APIView):
         Добавляет новый компонент
         """
         print('post')
-        image = request.data['image'].decode("utf-8")
-        filename = uuid.uuid4()
-        file = open(filename.__str__()+".png", "wb")
-        file.write(base64.b64decode(image))
-        file.close()
-        minioClient.load_file(filename.__str__())
-        request.data["componentimage"] = filename.__str__()+".png"
-        serializer = self.serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            image = bytes(request.data['componentimage'], "utf-8")
+            filename = uuid.uuid4()
+            file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+            file.write(base64.b64decode(image))
+            file.close()
+            minioClient.load_file(filename.__str__()+".png")
+            request.data["componentimage"] = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
+        except:
+            serializer = self.serializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(request_body=ComponentSerializer)
     @method_permission_classes([IsManager])
@@ -102,18 +103,20 @@ class ComponentsApiView(APIView):
         Обновляет информацию об компоненте
         """
         component = get_object_or_404(self.model, pk=pk)
-        image = request.data['image'].decode("utf-8")
-        filename = uuid.uuid4()
-        file = open(filename.__str__()+".png", "wb")
-        file.write(base64.b64decode(image))
-        file.close()
-        minioClient.load_file(filename.__str__())
-        component.componentimage = filename.__str__()+".png"
-        serializer = self.serializer(component, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            image = bytes(request.data['componentimage'], "utf-8")
+            filename = uuid.uuid4()
+            file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+            file.write(base64.b64decode(image))
+            file.close()
+            minioClient.load_file(filename.__str__()+".png")
+            component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
+        except:
+            serializer = self.serializer(component, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @method_permission_classes([IsManager])
     def delete(self, request, pk, format=None):
@@ -136,17 +139,28 @@ def post_component_to_creation(request, pk, format=None):
     """
     print('post')
     user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
+    print(user_email)
     user = Users.objects.get(email=user_email)
     component = get_object_or_404(Components, pk=pk)
-    creation = DatacenterCreations.objects.get_or_create(user=user)
-    creation[0].save()
+    creation = DatacenterCreations.objects.all().order_by("creationid").filter(user=user).last()
+    if creation is None or creation.creationstatus != 0:
+        creation = DatacenterCreations.objects.create(user=user)
+        creation.save()
     creation_components = CreationСomponents.objects.get_or_create(component=component,
-                                                                   creation=creation[0])
+                                                                   creation=creation)
     creation_components[0].componentsnumber += 1
     creation_components[0].save()
     components = Components.objects.all().filter(componentstatus=1).order_by("componentid")
     serializer = ComponentSerializer(components, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    ssid = request.COOKIES["session_id"]
+    value = session_storage.get(ssid)
+    creation = DatacenterCreations.objects.all().order_by("creationid").filter(
+        user=Users.objects.get(email=value.decode("utf-8"))).last()
+    return Response(
+        {
+            "components": serializer.data,
+            "creation": creation.creationid
+        }, status=status.HTTP_200_OK)
 
 
 class CreationcomponentsApiVIew(APIView):
@@ -154,27 +168,53 @@ class CreationcomponentsApiVIew(APIView):
     serializer = CreationComponentsSerializer
 
     @method_permission_classes((IsManager,))
-    def delete(self, request, pk_creation=None, pk_component=None, format=None):
+    def delete(self, request, format=None):
         """
         Удаляет информацию о мм
         """
-        mm = get_object_or_404(self.model, component=Components.objects.get(pk_component),
-                               creation=CreationСomponents.objects.get(pk_creation))
+        creation_id = request.data.get("creation_id")
+        component_id = request.data.get("component_id")
+        mm = get_object_or_404(self.model, component=Components.objects.get(componentid=component_id),
+                               creation=CreationСomponents.objects.get(creationid=creation_id))
         mm.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @swagger_auto_schema(request_body=CreationComponentsSerializer)
-    @method_permission_classes((IsManager,))
-    def put(self, request, pk, format=None):
+    @method_permission_classes([IsAuth])
+    def put(self, request, format=None):
         """
         Обновляет информацию о мм
         """
-        mm = get_object_or_404(self.model, pk=pk)
-        serializer = self.serializer(mm, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        creation_id = request.data.get("creation_id")
+        component_id = request.data.get("component_id")
+        mm = get_object_or_404(self.model, component=Components.objects.get(componentid=component_id),
+                               creation=DatacenterCreations.objects.get(creationid=creation_id))
+        mm.componentsnumber = request.data.get("componentsnumber")
+        creation = DatacenterCreations.objects.get(creationid=creation_id)
+        if creation.creationstatus != 0: return Response(status=status.HTTP_400_BAD_REQUEST)
+        if mm.componentsnumber == 0:
+            mm.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        mm.save()
+        return Response(status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuth])
+def get_last_creation(request, pk=None, format=None):
+    user = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
+    creation = DatacenterCreations.objects.all().order_by("creationid").filter(user=user).last()
+    creation_components = CreationСomponents.objects.all().filter(creation=creation)
+    list = []
+    number_of_components = []
+    for one in creation_components:
+        list.append(Components.objects.get(componentid=one.component.componentid))
+        number_of_components.append(one.componentsnumber)
+    components = chain(list)
+    return Response({
+        "creation": DatacenterCreationSerializer(creation).data,
+        "components": ComponentSerializer(components, many=True).data,
+        "number_of_components": number_of_components,
+    })
 
 
 class DatacenterCreationsApiVIew(APIView):
@@ -196,17 +236,35 @@ class DatacenterCreationsApiVIew(APIView):
             if status_filter is not None:
                 creations = creations.filter(creationstatus=status_filter)
             if start_date_filter is not None and end_date_filter is not None:
-                start_date = datetime.datetime.strptime(start_date_filter, "%Y-%m-%d")
-                end_date = datetime.datetime.strptime(end_date_filter, "%Y-%m-%d")
+                start_date = datetime.datetime.strptime(start_date_filter, "%Y-%m-%dT%H:%M:%S.%fZ")
+                end_date = datetime.datetime.strptime(end_date_filter, "%Y-%m-%dT%H:%M:%S.%fZ")
                 creations = creations.filter(creationdate__range=(start_date, end_date))
             serializer = self.serializer(creations, many=True)
-            return Response(serializer.data)
+            return Response({
+                "creations": serializer.data
+            })
         else:
             """
             Возвращает заявку
             """
             print('get')
             if pk is not None:
+                creation = self.model.objects.get(pk=pk)
+                if creation.user != user:
+                    return Response(status=status.HTTP_403_FORBIDDEN)
+                creation_components = CreationСomponents.objects.all().filter(creation=creation)
+                list = []
+                number_of_components = []
+                for one in creation_components:
+                    list.append(Components.objects.get(componentid=one.component.componentid))
+                    number_of_components.append(one.componentsnumber)
+                components = chain(list)
+                return Response({
+                    "creation": DatacenterCreationSerializer(creation).data,
+                    "components": ComponentSerializer(components, many=True).data,
+                    "number_of_components": number_of_components,
+                })
+            if pk is not None and user.is_staff:
                 creation = self.model.objects.get(pk=pk)
                 creation_components = CreationСomponents.objects.all().filter(creation=creation)
                 list = []
@@ -221,18 +279,10 @@ class DatacenterCreationsApiVIew(APIView):
                     "number_of_components": number_of_components,
                 })
             else:
-                creation = self.model.objects.get(user=user)
-                creation_components = CreationСomponents.objects.all().filter(creation=creation)
-                list = []
-                number_of_components = []
-                for one in creation_components:
-                    list.append(Components.objects.get(componentid=one.component.componentid))
-                    number_of_components.append(one.componentsnumber)
-                components = chain(list)
+                creations = self.model.objects.all().filter(user=user).order_by("creationid")
+                serializer = self.serializer(creations, many=True)
                 return Response({
-                    "creation": DatacenterCreationSerializer(creation).data,
-                    "components": ComponentSerializer(components, many=True).data,
-                    "number_of_components": number_of_components,
+                    "creations": serializer.data
                 })
 
     @swagger_auto_schema(request_body=DatacenterCreationSerializer)
@@ -363,10 +413,15 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             print(serializer.data)
+
             self.model_class.objects.create_user(email=serializer.data['email'],
                                                  password=serializer.data['password'],
                                                  is_staff=serializer.data['is_staff'])
-            return Response({'status': 'Success'}, status=200)
+            random_key = uuid.uuid4()
+            session_storage.set(random_key.__str__(), serializer.data['email'])
+            response = Response({'status': 'ok', 'is_staff': serializer.data['is_staff']})
+            response.set_cookie("session_id", random_key)
+            return response
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -378,13 +433,14 @@ def login_view(request):
         if user is not None:
             random_key = uuid.uuid4()
             session_storage.set(random_key.__str__(), user.email)
-            response = HttpResponse("{'status': 'ok'}")
+            response = Response({'status': 'ok', 'is_staff': user.is_staff})
             response.set_cookie("session_id", random_key)
             return response
         else:
-            return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+            return Response("{'status': 'error', 'error': 'login failed'}")
     else:
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['Post'])
 def logout_view(request):
