@@ -50,8 +50,15 @@ class ComponentsApiView(APIView):
             filterText = ""
             if request.GET.get("filterText") is not None:
                 filterText = request.GET.get("filterText")
-            components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
-                componentname__contains=filterText)
+            user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
+            print(user_email)
+            user = Users.objects.get(email=user_email)
+            if user.is_staff:
+                components = self.model.objects.all().order_by("componentid").filter(
+                    componentname__contains=filterText)
+            else:
+                components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
+                    componentname__contains=filterText)
             serializer = self.serializer(components, many=True)
             try:
                 ssid = request.COOKIES["session_id"]
@@ -89,7 +96,7 @@ class ComponentsApiView(APIView):
             file.close()
             minioClient.load_file(filename.__str__()+".png")
             request.data["componentimage"] = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
-        except:
+        finally:
             serializer = self.serializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -111,7 +118,7 @@ class ComponentsApiView(APIView):
             file.close()
             minioClient.load_file(filename.__str__()+".png")
             component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
-        except:
+        finally:
             serializer = self.serializer(component, data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -248,10 +255,8 @@ class DatacenterCreationsApiVIew(APIView):
             Возвращает заявку
             """
             print('get')
-            if pk is not None:
+            if pk is not None and user.is_staff:
                 creation = self.model.objects.get(pk=pk)
-                if creation.user != user:
-                    return Response(status=status.HTTP_403_FORBIDDEN)
                 creation_components = CreationСomponents.objects.all().filter(creation=creation)
                 list = []
                 number_of_components = []
@@ -264,8 +269,10 @@ class DatacenterCreationsApiVIew(APIView):
                     "components": ComponentSerializer(components, many=True).data,
                     "number_of_components": number_of_components,
                 })
-            if pk is not None and user.is_staff:
+            if pk is not None:
                 creation = self.model.objects.get(pk=pk)
+                if creation.user != user:
+                    return Response(status=status.HTTP_403_FORBIDDEN)
                 creation_components = CreationСomponents.objects.all().filter(creation=creation)
                 list = []
                 number_of_components = []
