@@ -27,7 +27,7 @@ class IsAuth(permissions.BasePermission):
         try:
             ssid = request.COOKIES["session_id"]
             value = session_storage.get(ssid)
-            if value is not None and value != "expired":
+            if value is not None and value.decode("utf-8") != "expired":
                 return bool(True)
             else:
                 return bool(False)
