@@ -10,9 +10,11 @@ class ComponentSerializer(serializers.ModelSerializer):
 
 
 class DatacenterCreationSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DatacenterCreations
-        fields = "__all__"
+        fields = ["creationid", "creationdate", "creationformdate", "creationcompleteddate", "creationstatus",
+                  "useremail", "moderatoremail"]
 
 
 class CreationComponentsSerializer(serializers.ModelSerializer):

@@ -52,19 +52,23 @@ class ComponentsApiView(APIView):
                 filterText = request.GET.get("filterText")
             user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
             print(user_email)
-            user = Users.objects.get(email=user_email)
-            if user.is_staff:
-                components = self.model.objects.all().order_by("componentid").filter(
-                    componentname__contains=filterText)
-            else:
+            try:
+                user = Users.objects.get(email=user_email)
+                if user.is_staff:
+                    components = self.model.objects.all().order_by("componentid").filter(
+                        componentname__contains=filterText)
+                else:
+                    components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
+                        componentname__contains=filterText)
+            except:
                 components = self.model.objects.all().filter(componentstatus=1).order_by("componentid").filter(
                     componentname__contains=filterText)
             serializer = self.serializer(components, many=True)
             try:
                 ssid = request.COOKIES["session_id"]
                 value = session_storage.get(ssid)
-                creation = DatacenterCreations.objects.get(user=Users.objects.get(email=value.decode("utf-8")))
-                CreationСomponents.objects.get(creation=creation).component
+                creation = DatacenterCreations.objects.all().filter(user=Users.objects.get(email=value.decode("utf-8"))).last()
+                CreationСomponents.objects.all().filter(creation=creation).last().component
                 return Response({
                     "components": serializer.data,
                     "creation": creation.creationid
@@ -80,7 +84,6 @@ class ComponentsApiView(APIView):
             serializer = self.serializer(component)
             return Response(serializer.data)
 
-    @swagger_auto_schema(request_body=ComponentSerializer)
     @method_permission_classes([IsManager])
     def post(self, request, format=None):
         """
@@ -91,11 +94,12 @@ class ComponentsApiView(APIView):
         try:
             image = bytes(request.data['componentimage'], "utf-8")
             filename = uuid.uuid4()
-            file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+            file = open("dcapi/static/" + filename.__str__() + ".png", "wb")
             file.write(base64.b64decode(image))
             file.close()
-            minioClient.load_file(filename.__str__()+".png")
-            request.data["componentimage"] = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
+            minioClient.load_file(filename.__str__() + ".png")
+            request.data[
+                "componentimage"] = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
         finally:
             serializer = self.serializer(data=request.data)
             if serializer.is_valid():
@@ -103,7 +107,7 @@ class ComponentsApiView(APIView):
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @swagger_auto_schema(request_body=ComponentSerializer)
+
     @method_permission_classes([IsManager])
     def put(self, request, pk, format=None):
         """
@@ -113,17 +117,17 @@ class ComponentsApiView(APIView):
         try:
             image = bytes(request.data['componentimage'], "utf-8")
             filename = uuid.uuid4()
-            file = open("dcapi/static/"+filename.__str__() + ".png", "wb")
+            file = open("dcapi/static/" + filename.__str__() + ".png", "wb")
             file.write(base64.b64decode(image))
             file.close()
-            minioClient.load_file(filename.__str__()+".png")
+            minioClient.load_file(filename.__str__() + ".png")
             component.componentimage = 'http://' + minio_url + '/' + minio_bucket + '/' + filename.__str__() + ".png"
+            print(component.componentimage)
+            print(len(component.componentimage))
         finally:
+            component.save()
             serializer = self.serializer(component, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_200_OK)
 
     @method_permission_classes([IsManager])
     def delete(self, request, pk, format=None):
@@ -147,7 +151,10 @@ def post_component_to_creation(request, pk, format=None):
     print('post')
     user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
     print(user_email)
-    user = Users.objects.get(email=user_email)
+    try:
+        user = Users.objects.get(email=user_email)
+    except:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     component = get_object_or_404(Components, pk=pk)
     creation = DatacenterCreations.objects.all().order_by("creationid").filter(user=user).last()
     if creation is None or creation.creationstatus != 0:
@@ -239,7 +246,7 @@ class DatacenterCreationsApiVIew(APIView):
             Возвращает список заявок
             """
             print('get')
-            creations = self.model.objects.all()
+            creations = self.model.objects.all().order_by("creationid")
             if status_filter is not None:
                 creations = creations.filter(creationstatus=status_filter)
             if start_date_filter is not None and end_date_filter is not None:
@@ -340,9 +347,11 @@ def publish_creation(request, pk, format=None):
 @api_view(['POST'])
 @permission_classes([IsManager])
 def approve_creation(request, pk, format=None):
+    moderator = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
         creation.creationstatus = 2
+        creation.moderator = moderator
     else:
         return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
@@ -351,24 +360,28 @@ def approve_creation(request, pk, format=None):
 @api_view(['POST'])
 @permission_classes([IsManager])
 def reject_creation(request, pk, format=None):
+    moderator = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
     creation = get_object_or_404(DatacenterCreations, pk=pk)
     if creation.creationstatus == 1:
         creation.creationstatus = 3
+        creation.moderator = moderator
     else:
         return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
 
 
-@api_view(['POST'])
-@permission_classes([IsManager])
-def complete_creation(request, pk, format=None):
-    creation = get_object_or_404(DatacenterCreations, pk=pk)
-    if creation.creationstatus == 2:
-        creation.creationstatus = 4
-        creation.creationcompleteddate = datetime.datetime.now()
-    else:
-        return Response(status=status.HTTP_403_FORBIDDEN)
-    return return_creations(creation, request)
+# @api_view(['POST'])
+# @permission_classes([IsManager])
+# def complete_creation(request, pk, format=None):
+#     user = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
+#     creation = get_object_or_404(DatacenterCreations, pk=pk)
+#     if creation.creationstatus == 2:
+#         creation.creationstatus = 4
+#         creation.moderator = user.id
+#         creation.creationcompleteddate = datetime.datetime.now()
+#     else:
+#         return Response(status=status.HTTP_403_FORBIDDEN)
+#     return return_creations(creation, request)
 
 
 @api_view(['POST'])
@@ -432,15 +445,16 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(request_body=UserSerializer, methods=["post"])
 @api_view(['Post'])
-def login_view(request):
+def login_view(request, format=None):
     serializer = UserSerializer(data=request.data)
     if not serializer.is_valid():
         user = authenticate(**serializer.data)
         if user is not None:
             random_key = uuid.uuid4()
             session_storage.set(random_key.__str__(), user.email)
-            response = Response({'status': 'ok', 'is_staff': user.is_staff})
+            response = Response({'status': 'ok', 'is_staff': user.is_staff}, status=status.HTTP_200_OK)
             response.set_cookie("session_id", random_key)
             return response
         else:

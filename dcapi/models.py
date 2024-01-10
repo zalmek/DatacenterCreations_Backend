@@ -55,9 +55,24 @@ class Users(AbstractBaseUser, PermissionsMixin):
 class DatacenterCreations(models.Model):
     creationid = models.BigAutoField(primary_key=True)
     creationdate = models.DateTimeField(auto_now_add=True)
-    creationformdate = models.DateTimeField(blank=True, null=True)
-    creationcompleteddate = models.DateTimeField(blank=True, null=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING, db_column='useremail', default="null", to_field='email')
+    creationformdate = models.DateTimeField(null=True)
+    creationcompleteddate = models.DateTimeField(null=True)
+    user = models.ForeignKey('Users', models.DO_NOTHING, db_column='userid', to_field='id',
+                             related_name="user")
+    moderator = models.ForeignKey('Users', models.DO_NOTHING, db_column='moderatorid', null=True, to_field='id',
+                                  related_name="moderator")
+
+    def _set_user_email(self):
+        return Users.objects.get(id=self.user.id).email
+
+    def _set_moderator_email(self):
+        return Users.objects.get(id=self.moderator.id).email
+
+    def _set_full_name(self, combined_name):
+        self.first_name, self.last_name = combined_name.split(' ', 1)
+
+    useremail = property(_set_user_email)
+    moderatoremail = property(_set_moderator_email)
     creationstatus = models.SmallIntegerField(default=0)
 
     class Meta:

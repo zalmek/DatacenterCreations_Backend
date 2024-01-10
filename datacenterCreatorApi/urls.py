@@ -43,7 +43,7 @@ urlpatterns = [
     path(r'api/datacentercreations/<int:pk>/user_publish', views.publish_creation, name=''),
     path(r'api/datacentercreations/<int:pk>/moderator_approvement', views.approve_creation, name=''),
     path(r'api/datacentercreations/<int:pk>/moderator_rejection', views.reject_creation, name=''),
-    path(r'api/datacentercreations/<int:pk>/moderator_completion', views.complete_creation, name=''),
+    # path(r'api/datacentercreations/<int:pk>/moderator_completion', views.complete_creation, name=''),
     path(r'api/datacentercreations/<int:pk>/user_deletion', views.delete_creation, name=''),
 
     path('admin/', admin.site.urls),
