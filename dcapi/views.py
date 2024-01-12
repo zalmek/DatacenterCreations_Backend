@@ -50,9 +50,9 @@ class ComponentsApiView(APIView):
             filterText = ""
             if request.GET.get("filterText") is not None:
                 filterText = request.GET.get("filterText")
-            user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
-            print(user_email)
             try:
+                user_email = session_storage.get(request.COOKIES["session_id"]).decode("utf-8")
+                print(user_email)
                 user = Users.objects.get(email=user_email)
                 if user.is_staff:
                     components = self.model.objects.all().order_by("componentid").filter(
@@ -127,6 +127,8 @@ class ComponentsApiView(APIView):
         finally:
             component.save()
             serializer = self.serializer(component, data=request.data)
+            serializer.is_valid()
+            serializer.save()
             return Response(status=status.HTTP_200_OK)
 
     @method_permission_classes([IsManager])
