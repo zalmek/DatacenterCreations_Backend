@@ -67,7 +67,8 @@ class ComponentsApiView(APIView):
             try:
                 ssid = request.COOKIES["session_id"]
                 value = session_storage.get(ssid)
-                creation = DatacenterCreations.objects.all().filter(user=Users.objects.get(email=value.decode("utf-8"))).last()
+                creation = DatacenterCreations.objects.all().filter(
+                    user=Users.objects.get(email=value.decode("utf-8"))).last()
                 CreationСomponents.objects.all().filter(creation=creation).last().component
                 return Response({
                     "components": serializer.data,
@@ -106,7 +107,6 @@ class ComponentsApiView(APIView):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
     @method_permission_classes([IsManager])
     def put(self, request, pk, format=None):
@@ -326,12 +326,22 @@ class DatacenterCreationsApiVIew(APIView):
 
 @api_view(['POST'])
 @permission_classes([IsAuth])
-def publish_creation(request, pk, format=None):
+def publish_or_delete_creation(request, pk, format=None):
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    if creation.creationstatus == 0:
+    statuss = 0
+    try:
+        statuss = request.data['status']
+        print(statuss)
+    except:
+        pass
+    if creation.creationstatus == 0 and statuss == 1:
         creation.creationstatus = 1
         creation.creationformdate = datetime.datetime.now()
         creation.save()
+    elif creation.creationstatus == 0 and statuss == 5:
+        creation.creationstatus = 5
+    else:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     creation_components = CreationСomponents.objects.all().filter(creation=creation)
     list = []
     number_of_components = []
@@ -348,28 +358,38 @@ def publish_creation(request, pk, format=None):
 
 @api_view(['POST'])
 @permission_classes([IsManager])
-def approve_creation(request, pk, format=None):
+def approve_or_reject_creation(request, pk, format=None):
+    statuss = 0
+    try:
+        statuss = request.data['status']
+        print(statuss)
+    except:
+        pass
     moderator = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
     creation = get_object_or_404(DatacenterCreations, pk=pk)
-    if creation.creationstatus == 1:
+    print(creation.creationstatus, statuss)
+    if creation.creationstatus == 1 and statuss == 2:
         creation.creationstatus = 2
         creation.moderator = moderator
-    else:
-        return Response(status=status.HTTP_403_FORBIDDEN)
-    return return_creations(creation, request)
-
-
-@api_view(['POST'])
-@permission_classes([IsManager])
-def reject_creation(request, pk, format=None):
-    moderator = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
-    creation = get_object_or_404(DatacenterCreations, pk=pk)
-    if creation.creationstatus == 1:
+    elif creation.creationstatus == 1 and statuss == 3:
         creation.creationstatus = 3
         creation.moderator = moderator
     else:
         return Response(status=status.HTTP_403_FORBIDDEN)
     return return_creations(creation, request)
+
+
+# @api_view(['POST'])
+# @permission_classes([IsManager])
+# def reject_creation(request, pk, format=None):
+#     moderator = Users.objects.get(email__exact=session_storage.get(request.COOKIES["session_id"]).decode("utf-8"))
+#     creation = get_object_or_404(DatacenterCreations, pk=pk)
+#     if creation.creationstatus == 1:
+#         creation.creationstatus = 3
+#         creation.moderator = moderator
+#     else:
+#         return Response(status=status.HTTP_403_FORBIDDEN)
+#     return return_creations(creation, request)
 
 
 # @api_view(['POST'])
@@ -386,18 +406,18 @@ def reject_creation(request, pk, format=None):
 #     return return_creations(creation, request)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuth])
-def delete_creation(request, pk, format=None):
-    """
-        Удаляет заявку (статус "удалён")
-        """
-    creation = get_object_or_404(DatacenterCreations, pk=pk)
-    if creation.creationstatus == 0:
-        creation.creationstatus = 5
-    else:
-        return Response(status=status.HTTP_403_FORBIDDEN)
-    return return_creations(creation, request)
+# @api_view(['POST'])
+# @permission_classes([IsAuth])
+# def delete_creation(request, pk, format=None):
+#     """
+#         Удаляет заявку (статус "удалён")
+#         """
+#     creation = get_object_or_404(DatacenterCreations, pk=pk)
+#     if creation.creationstatus == 0:
+#         creation.creationstatus = 5
+#     else:
+#         return Response(status=status.HTTP_403_FORBIDDEN)
+#     return return_creations(creation, request)
 
 
 def return_creations(creation, request):
