@@ -59,7 +59,7 @@ class DatacenterCreations(models.Model):
     creationcompleteddate = models.DateTimeField(null=True)
     user = models.ForeignKey('Users', models.DO_NOTHING, db_column='userid', to_field='id',
                              related_name="user")
-    moderator = models.ForeignKey('Users', models.DO_NOTHING, db_column='moderatorid', null=True, to_field='id',
+    moderator = models.ForeignKey('Users', models.DO_NOTHING, db_column='moderatorid', blank=True, to_field='id',
                                   related_name="moderator")
 
     def _set_user_email(self):
